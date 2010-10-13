@@ -1,0 +1,57 @@
+;======================================
+; Apple II Bootloader
+;======================================
+
+		* = $300
+
+;======================================
+; I/O Definitions
+;======================================
+
+			IO_ATTN  = $C063	; Attention signal from PC for framing
+			IO_CLOCK = $C062	; SPI CLK signal from PC
+			IO_DATA  = $C061	; SPI DATA signal from PC
+		
+MAINLOOP	LDA	IO_ATTN		; Loop until we get attention signal
+			BPL	MAINLOOP
+			
+	; Got attention. Next byte is Page# and then 256 bytes
+	; of page data
+ReceivePage	LDA	#$00
+			STA PagePointer
+			JSR	ReadByte		; Page to store into
+			STA	PagePointer+1
+			
+			; Now read 256 bytes
+@ReceiveNextByte
+			JSR	ReadByte
+			LDY	#$00
+			PagePointer = *+1
+			STA	$1234,Y
+			INC	PagePointer
+			BNE	@ReceiveNextByte
+			
+			; Done
+			JMP MainLoop
+
+;============= ReadByte ====================================================
+ReadByte	LDA	#$00		; Init return to 0
+			LDX #$08		; 8 bits to read
+			
+@RBNextBit	LDY	IO_CLOCK	; Wait for clock
+			BPL	@RBNextBit
+			ASL				; Make room for bit being read
+			LDY	IO_DATA		; Test the bit
+			BPL	@WaitClock
+			ORA	#$01		; It's a one so set the LSB
+@WaitClock	LDY	IO_CLOCK	; Got the bit, no wait for CLOCK to go low
+			BMI	@WaitClock
+			
+			; Finished reading a bit
+			
+			DEX				; Decrement bit count
+			BNE	@RBNextBit	; If more to read, then read them
+			
+			; Finished reading a byte. Accumulator has result
+			RTS
+;==============================================================================

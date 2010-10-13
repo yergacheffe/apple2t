@@ -1,0 +1,4 @@
+*.suo
+*.user
+windows/bin/*
+windows/obj/*

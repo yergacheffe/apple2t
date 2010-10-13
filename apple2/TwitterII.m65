@@ -1,0 +1,324 @@
+;======================================
+;
+; TwitterII - Apple II twitter client 
+;
+; yergacheffe@atomsandelectrons.com
+; http://www.atomsandelectrons.com
+;
+;======================================
+
+;======= MEMORY LAYOUT ================
+
+		; $800-$BFF: LORES tweet buffer
+		LORESBUFFER = $800
+
+		; $6000: Program
+		* = $6000
+
+;======================================
+; I/O Definitions
+;======================================
+
+		IO_ATTN  = $C063	; Attention signal from PC for framing
+		IO_CLOCK = $C062	; SPI CLK signal from PC
+		IO_DATA  = $C061	; SPI DATA signal from PC
+		
+ENTRY		JSR	Init		; Initialize data
+			JMP ScrollLores
+
+;===== MainLoop ===============================================================
+
+MAINLOOP	LDA	IO_ATTN		; Loop until we get attention signal
+			BPL	MAINLOOP
+			
+	; Got attention. Now the CLOCK and DATA
+	; signals are used to tell us what to do
+	;
+	;  COMMAND | CLOCK | DATA | Description
+	;  ------------------------------------------------
+	;     0    |   0   |  0   | Receive a page of data
+	;  ------------------------------------------------
+	;     1    |   0   |  1   | Scroll GR2->GR1
+	;  ------------------------------------------------
+	;     2    |   1   |  0   | Write a byte of data
+	;  ------------------------------------------------
+	;     3    |   1   |  1   | Clear HIRES buffer
+	;  ------------------------------------------------
+	
+			LDY #0
+			LDA	IO_CLOCK
+			BPL @CMD1
+			LDY #2
+@CMD1		LDA IO_DATA
+			BPL	@GOTCMD
+			INY
+@GOTCMD		TYA					; Y contains command number
+			ASL					; Multiply by 2 to get offset
+			TAY
+			LDA	CmdDispatch,Y	; LO byte of command handler
+			PHA
+			INY
+			LDA CmdDispatch,Y	; HIGH byte of command handler
+			PHA
+			RTS					; Dispatch
+			
+CmdDispatch	.DBYTE	ReceivePage-1
+			.DBYTE	ScrollLores-1
+			.DBYTE	WriteByte-1
+			.DBYTE	HiresClear-1
+
+;===== HiresClear =============================================================
+;
+; Fast erase of hi-res graphics page 1. $2000..$3FFF
+;
+;==============================================================================
+HiresClear	LDY	#00
+			TYA
+@ClearLoop	STA	$2000,Y
+			STA	$2100,Y
+			STA	$2200,Y
+			STA	$2300,Y
+			STA	$2400,Y
+			STA	$2500,Y
+			STA	$2600,Y
+			STA	$2700,Y
+			STA	$2800,Y
+			STA	$2900,Y
+			STA	$2A00,Y
+			STA	$2B00,Y
+			STA	$2C00,Y
+			STA	$2D00,Y
+			STA	$2E00,Y
+			STA	$2F00,Y
+
+			STA	$3000,Y
+			STA	$3100,Y
+			STA	$3200,Y
+			STA	$3300,Y
+			STA	$3400,Y
+			STA	$3500,Y
+			STA	$3600,Y
+			STA	$3700,Y
+			STA	$3800,Y
+			STA	$3900,Y
+			STA	$3A00,Y
+			STA	$3B00,Y
+			STA	$3C00,Y
+			STA	$3D00,Y
+			STA	$3E00,Y
+			STA	$3F00,Y
+			
+			INY
+			BNE	@ClearLoop
+			
+			; Don't return to MainLoop until the ATTN signal has gone low again
+			; So we don't spuriously come back here again
+@WaitNoAttn	LDA	IO_ATTN
+			BMI	@WaitNoAttn
+			JMP	MainLoop
+			
+			
+;===== WriteByte ==============================================================
+
+WriteByte	LDA	IO_CLOCK		; Wait for clock to go low. We got here by it being high
+			BMI	WriteByte
+			
+			JSR	ReadByte		; Low byte of dest address
+			STA	@DestAddr
+			JSR	ReadByte		; High byte of dest address
+			STA	@DestAddr+1
+			JSR	ReadByte		; Byte to write
+@DestAddr = *+1
+			STA	$1234
+			JMP MainLoop
+			
+ReceivePage	LDA	#$00
+			STA PagePointer
+			JSR	ReadByte		; Page to store into
+			STA	PagePointer+1
+			
+			; Now read 256 bytes
+@ReceiveNextByte
+			JSR	ReadByte
+			LDY	#$00
+			PagePointer = *+1
+			STA	$1234,Y
+			INC	PagePointer
+			BNE	@ReceiveNextByte
+			
+			; Done
+			JMP MainLoop
+
+;===== ScrollLores ============================================================
+
+ScrollLores
+			LDY #00		; Scroll frame 0..39
+			
+@NextFrame
+			LDX #00		; Scroll offset 0..39
+
+@NextColumn			
+			; Copy scanlines 0..7
+			LDA	$401,X
+			STA $400,X
+			LDA	$481,X
+			STA $480,X
+			LDA	$501,X
+			STA $500,X
+			LDA	$581,X
+			STA $580,X
+			LDA	$601,X
+			STA $600,X
+			LDA	$681,X
+			STA $680,X
+			LDA	$701,X
+			STA $700,X
+			LDA	$781,X
+			STA $780,X
+
+			; Copy scanlines 8..15
+			LDA	$429,X
+			STA $428,X
+			LDA	$4A9,X
+			STA $4A8,X
+			LDA	$529,X
+			STA $528,X
+			LDA	$5A9,X
+			STA $5A8,X
+			LDA	$629,X
+			STA $628,X
+			LDA	$6A9,X
+			STA $6A8,X
+			LDA	$729,X
+			STA $728,X
+			LDA	$7A9,X
+			STA $7A8,X
+
+			; Copy scanlines 16..23
+			LDA	$451,X
+			STA $450,X
+			LDA	$4D1,X
+			STA $4D0,X
+			LDA	$551,X
+			STA $550,X
+			LDA	$5D1,X
+			STA $5D0,X
+			LDA	$651,X
+			STA $650,X
+			LDA	$6D1,X
+			STA $6D0,X
+			LDA	$751,X
+			STA $750,X
+			LDA	$7D1,X
+			STA $7D0,X
+			
+			INX
+			CPX #39
+			BEQ	@LastColumn
+			JMP	@NextColumn
+
+@LastColumn	
+			LDA	$800,Y
+			STA	$400,X
+			LDA	$880,Y
+			STA	$480,X
+			LDA	$900,Y
+			STA	$500,X
+			LDA	$980,Y
+			STA	$580,X
+			LDA	$A00,Y
+			STA	$600,X
+			LDA	$A80,Y
+			STA	$680,X
+			LDA	$B00,Y
+			STA	$700,X
+			LDA	$B80,Y
+			STA	$780,X
+
+			LDA	$828,Y
+			STA	$428,X
+			LDA	$8A8,Y
+			STA	$4A8,X
+			LDA	$928,Y
+			STA	$528,X
+			LDA	$9A8,Y
+			STA	$5A8,X
+			LDA	$A28,Y
+			STA	$628,X
+			LDA	$AA8,Y
+			STA	$6A8,X
+			LDA	$B28,Y
+			STA	$728,X
+			LDA	$BA8,Y
+			STA	$7A8,X
+
+			LDA	$850,Y
+			STA	$450,X
+			LDA	$8D0,Y
+			STA	$4D0,X
+			LDA	$950,Y
+			STA	$550,X
+			LDA	$9D0,Y
+			STA	$5D0,X
+			LDA	$A50,Y
+			STA	$650,X
+			LDA	$AD0,Y
+			STA	$6D0,X
+			LDA	$B50,Y
+			STA	$750,X
+			LDA	$BD0,Y
+			STA	$7D0,X
+			
+			INY
+			CPY #40
+			BEQ	@ScrollDone
+			JMP	@NextFrame
+@ScrollDone
+			JMP	MainLoop
+
+Beep1		LDA	#$40
+			JSR	Beep
+			JMP MainLoop
+			
+Beep2		LDA	#$60
+			JSR	Beep
+			JMP MainLoop
+			
+Beep3		LDA	#$80
+			JSR	Beep
+			JMP MainLoop
+			
+;============= ReadByte ====================================================
+ReadByte	LDA	#$00		; Init return to 0
+			LDX #$08		; 8 bits to read
+			
+@RBNextBit	LDY	IO_CLOCK	; Wait for clock
+			BPL	@RBNextBit
+			ASL				; Make room for bit being read
+			LDY	IO_DATA		; Test the bit
+			BPL	@WaitClock
+			ORA	#$01		; It's a one so set the LSB
+@WaitClock	LDY	IO_CLOCK	; Got the bit, no wait for CLOCK to go low
+			BMI	@WaitClock
+			
+			; Finished reading a bit
+			
+			DEX				; Decrement bit count
+			BNE	@RBNextBit	; If more to read, then read them
+			
+			; Finished reading a byte. Accumulator has result
+			
+			RTS
+;==============================================================================
+
+Beep		LDY	#$FF
+@BeepTick	STA	$C030
+			TAX
+@BeepFreq	DEX
+			BNE	@BeepFreq
+			DEY
+			BNE	@BeepTick
+			RTS
+			
+Init		LDA	$C050		; Graphics Mode
+			RTS
