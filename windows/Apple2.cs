@@ -48,7 +48,7 @@ namespace TweetWall
         // 8 - Brown (CTS)
 
         /// <summary>
-        /// Initializes the FT_XXX API driver and opens the first device.
+        /// Initializes the FT_XXX API driver and opens the device.
         /// </summary>
         public Apple2()
         {
@@ -60,6 +60,12 @@ namespace TweetWall
             IntPtr desc = Marshal.AllocHGlobal(1000);
             int deviceCount;
 
+#if false
+            // This more complex code allows you to open up a specific FTDI USB->Serial
+            // device by unique name. I used this code when I was driving 3 different
+            // devices on 3 different cables and needed to address the Apple II via a
+            // specific cable. For most folks with just a single FTDI cable, the alternate
+            // code that simply opens the first device works best.
             Err = FT_CreateDeviceInfoList(out deviceCount);
             Err = FT_GetDeviceInfoDetail(0, ref flags, ref type, ref id, ref locid, serial, desc, out Handle);
             string s = Marshal.PtrToStringAnsi(serial);
@@ -70,8 +76,13 @@ namespace TweetWall
 
             IntPtr str = Marshal.StringToHGlobalAnsi("FTELSFTV");
             Err = FT_OpenEx(str, 1, out Handle);
+#else
+            // "Simple" code to open the FTDI USB->Serial cable. This just opens
+            // the first one it finds, so it only works when you have a single
+            // FTDI cable
+            Err = FT_Open(0, out Handle);
+#endif
 
-//            Err = FT_Open(0, out Handle);
             Err = FT_SetBitMode(Handle, 0x07, 1);
             Err = FT_SetBaudRate(Handle, 3600);
             BitBang(0);
