@@ -1,4 +1,24 @@
-﻿using System;
+﻿// Copyright (c) 2010 Chris Yerga
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -44,6 +64,7 @@ namespace TweetWall
             {
                 try
                 {
+                    // FIXME: Need to upgrade this to use OAuth. Basic auth is no longer supported!
                     var req = FluentTwitter.CreateRequest().AuthenticateAs("user", "password").Statuses().Mentions().Take(60).AsXml();
                     var data = req.Request();
                     XDocument doc = XDocument.Parse(data.Response);
@@ -57,7 +78,7 @@ namespace TweetWall
 
                     return wall.ToList();
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     --attempts;
                     System.Threading.Thread.Sleep(500);
@@ -96,7 +117,7 @@ namespace TweetWall
                         tweetWallItems.Add(items[0]);
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                 }
             }
@@ -112,6 +133,7 @@ namespace TweetWall
             {
                 try
                 {
+                    // FIXME: Need to upgrade this to use OAuth. Basic auth is no longer supported!
                     var req = FluentTwitter.CreateRequest().AuthenticateAs("user", "password").Statuses().OnUserTimeline().For(user).AsXml();
                     var data = req.Request().Response;
 
@@ -145,7 +167,7 @@ namespace TweetWall
 
                     return items;
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     --attempts;
                     System.Threading.Thread.Sleep(500);
@@ -163,6 +185,7 @@ namespace TweetWall
             {
                 try
                 {
+                    // FIXME: Need to upgrade this to use OAuth. Basic auth is no longer supported!
                     var req = FluentTwitter.CreateRequest().AuthenticateAs("user", "password").Statuses().OnFriendsTimeline().AsXml();
                     var data = req.Request().Response;
 
@@ -173,7 +196,7 @@ namespace TweetWall
 
                     return wall.ToList();
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     --attempts;
                     System.Threading.Thread.Sleep(500);
