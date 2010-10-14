@@ -1,0 +1,11 @@
+Issues / Todo
+
+1. Biggest current issue is that the .Net code as it stands today
+   doesn't work with Twitter. This is because Twitter no longer
+   supports basic-auth and requires OAuth. The code in WallItem.cs
+   will need to be changed. I have updated the version of the
+   TweetSharp Twitter API wrapper, which supports OAuth. So this
+   shouldn't be a lot of work.
+
+2. Finish documentation on how to get the initial code to the Apple II
+
