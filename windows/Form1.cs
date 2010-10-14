@@ -49,6 +49,12 @@ namespace TweetWall
 
             apple2 = new Apple2TweetDisplay(apple2srcImage, apple2LoresImage, apple2HiresImage);
 
+            // If you are bootstrapping your Apple II, uncomment the following line
+            // to transfer the Apple II client code. Doing so requires that you've
+            // hand-entered the mini bootloader code at location $300 on the Apple II
+            // so the serial transfer protocol is working.
+//          apple2.LoadCode();
+
             // Display animation idler
             idler = new Timer();
             idler.Interval = 50;
@@ -68,13 +74,32 @@ namespace TweetWall
         {
             if (apple2Items == null || apple2Index >= apple2Items.Count)
             {
-//              apple2Items = TwitterProvider.GetDirectMessages();
+                // Pick a Twitter query to display:
+#if false
+                // This gets @mentions of your account. It requires authentication,
+                // so you will need to modify WallItem.cs to contain your tokens
+                apple2Items = TwitterProvider.GetMentions();
+#endif
+
+#if false
+                // This gets the timeline view of the people you follow. It's
+                // the standard twitter view we're all used to. It also requires
+                // authentication, so follow the instructions in WallItem.cs to
+                // make this work.
                 apple2Items = TwitterProvider.GetLatestItems();
+#endif
 
+                // This gets the latest tweets from a given user. It does not
+                // require authentication, so it is the easiest to test with.
+                apple2Items = TwitterProvider.GetItemsFromUser("yergacheffe");
+
+                // Limit number to most recent 5 or last 10 minutes. I did this
+                // at Maker Faire to assure that folks tweeting in real-time would
+                // be able to see their tweet on the Apple II in a fairly timely
+                // manner. You may wish to turn this off for viewing your own
+                // Twitter timeline at home.
                 List<WallItem> culled = new List<WallItem>();
-
-                // Limit number to most recent 5 or last 10 minutes
-                for (int cullIndex=0; cullIndex<apple2Items.Count; ++cullIndex)
+                for (int cullIndex = 0; cullIndex < apple2Items.Count; ++cullIndex)
                 {
                     if ((cullIndex < 5) || (DateTime.Now - apple2Items[cullIndex].TimeStamp) < TimeSpan.FromMinutes(10))
                     {
@@ -83,6 +108,7 @@ namespace TweetWall
                 }
                 apple2Items = culled;
 
+                // This just updates the UI list in the Windows GUI
                 tweetList.Items.Clear();
                 foreach (WallItem item in apple2Items)
                 {
@@ -93,14 +119,20 @@ namespace TweetWall
                 apple2Index = 0;
             }
 
+            // Are there more tweets to display?
             if (apple2Index < apple2Items.Count)
             {
+                // Yes -- is it time yet? And if so, is the Apple II even
+                // ready for another one?
                 if (DateTime.UtcNow > nextTweet && apple2.ReadyToDisplay)
                 {
+                    // We're ready for a new item -- grab the next one
                     var item = apple2Items[apple2Index];
 
                     try
                     {
+                        // Convert the image to Apple II format, send via the
+                        // serial protocol, etc. Lots can go wrong here :)
                         apple2.DisplayTweet(item);
                     }
                     catch (Exception e)

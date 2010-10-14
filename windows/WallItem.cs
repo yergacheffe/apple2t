@@ -30,43 +30,77 @@ using System.IO;
 
 namespace TweetWall
 {
-    public class WallItem
-    {
-        public WallItem(string from, string message, string imageUri)
-        {
-            From = from;
-            Message = message;
-            ImageUri = imageUri;
-        }
-
-        public WallItem(string from, string message, string imageUri, DateTime timestamp)
-        {
-            From = from;
-            Message = message;
-            ImageUri = imageUri;
-            TimeStamp = timestamp;
-        }
-
-        public DateTime TimeStamp { get; set; }
-        public string ImageUri { get; set; }
-        public string From { get; set; }
-        public string Message { get; set; }
-    }
-
+    /// <summary>
+    /// Data source provider for Twitter data. Some of the methods require you
+    /// to authenticate with Twitter. For testing the unauthenticated methods
+    /// will work fine, but you'll eventually want your own personal timeline.
+    /// <para>
+    /// To get authentication working, you'll need to do the following steps:
+    /// 
+    ///   1. Register a new application at http://dev.twitter.com/apps/new
+    ///      For Application type, select "Client" which means you do not
+    ///      need to provide a callback URL. I selected Read&Write access,
+    ///      but Read may be sufficient.
+    ///      
+    ///   2. Go to http://dev.twitter.com/apps and select the newly created
+    ///      application to get access to the authentication keys. On this page
+    ///      under "OAuth 1.0a Settings" you will see a "Consumer key" and a
+    ///      "Consumer secret" that identifies your application. Copy these
+    ///      to the ConsumerKey and ConsumerSecret fields below.
+    ///      
+    ///   3. On the right side of the page is a link to view "My access token"
+    ///      Click this link. This gives you the access token for your Twitter
+    ///      account. Copy these values into the AccessToken and AccessTokenSecret
+    ///      fields below
+    /// 
+    /// You should now be ready to use the authenticated queries.
+    /// </para>
+    /// </summary>
     public class TwitterProvider
     {
-        // 
-        public static List<WallItem> GetDirectMessages()
+        // Twitter OAuth secrets in plaintext! This is extremely unsecure, so
+        // make sure nobody has access to this or implement secure local storage
+        // for these.
+        private const string ConsumerKey = "<consumer key here>";
+        private const string ConsumerSecret = "<consumer secret here>";
+        private const string AccessToken = "<access token here>";
+        private const string AccessTokenSecret = "<access token secret here>";
+
+        /// <summary>
+        /// Returns a TweetSharp request object without authentication.
+        /// </summary>
+        private static IFluentTwitter GetPublicRequest()
+        {
+            return FluentTwitter.CreateRequest();
+        }
+
+        /// <summary>
+        /// Returns an authenticated TweetSharp request object
+        /// </summary>
+        private static IFluentTwitter GetAuthenticatedRequest()
+        {
+            return FluentTwitter.CreateRequest().AuthenticateWith(
+                ConsumerKey, ConsumerSecret, AccessToken, AccessTokenSecret);
+        }
+
+        public static List<WallItem> GetMentions()
         {
             int attempts = 3;
+            int failSleepMs = 500;
 
             do
             {
                 try
                 {
-                    // FIXME: Need to upgrade this to use OAuth. Basic auth is no longer supported!
-                    var req = FluentTwitter.CreateRequest().AuthenticateAs("user", "password").Statuses().Mentions().Take(60).AsXml();
+                    // Get authenticated request
+                    var req = GetAuthenticatedRequest().Statuses().Mentions().Take(10).AsXml();
                     var data = req.Request();
+
+                    if (data.ResponseHttpStatusCode == 401)
+                    {
+                        throw new ApplicationException("Twitter Authentication Exception. Did you enter your token info in WallItem.cs?", data.Exception);
+                    }
+
                     XDocument doc = XDocument.Parse(data.Response);
 
                     // <created_at>Sat May 22 02:31:05 +0000 2010</created_at>
@@ -78,10 +112,15 @@ namespace TweetWall
 
                     return wall.ToList();
                 }
+                catch (ApplicationException)
+                {
+                    throw;
+                }
                 catch (Exception)
                 {
                     --attempts;
-                    System.Threading.Thread.Sleep(500);
+                    System.Threading.Thread.Sleep(failSleepMs);
+                    failSleepMs = failSleepMs * 2;
                 }
             } while (attempts > 0);
 
@@ -134,7 +173,7 @@ namespace TweetWall
                 try
                 {
                     // FIXME: Need to upgrade this to use OAuth. Basic auth is no longer supported!
-                    var req = FluentTwitter.CreateRequest().AuthenticateAs("user", "password").Statuses().OnUserTimeline().For(user).AsXml();
+                    var req = GetPublicRequest().Statuses().OnUserTimeline().For(user).AsXml();
                     var data = req.Request().Response;
 
                     XDocument doc = XDocument.Parse(data);
@@ -186,8 +225,13 @@ namespace TweetWall
                 try
                 {
                     // FIXME: Need to upgrade this to use OAuth. Basic auth is no longer supported!
-                    var req = FluentTwitter.CreateRequest().AuthenticateAs("user", "password").Statuses().OnFriendsTimeline().AsXml();
+                    var req = GetAuthenticatedRequest().Statuses().OnFriendsTimeline().AsXml();
                     var data = req.Request().Response;
+
+                    if (req.Request().ResponseHttpStatusCode == 401)
+                    {
+                        throw new ApplicationException("Twitter Authentication Exception. Did you enter your token info in WallItem.cs?", req.Request().Exception);
+                    }
 
                     XDocument doc = XDocument.Parse(data);
 
@@ -195,6 +239,10 @@ namespace TweetWall
                                select new WallItem(e.Element("user").Element("screen_name").Value, e.Element("text").Value, e.Element("user").Element("profile_image_url").Value);
 
                     return wall.ToList();
+                }
+                catch (ApplicationException)
+                {
+                    throw;
                 }
                 catch (Exception)
                 {
@@ -205,5 +253,63 @@ namespace TweetWall
 
             return null;
         }
+    }
+
+    /// <summary>
+    /// Encapsulates a single tweet pulled from Twitter to be displayed on the
+    /// Apple II.
+    /// </summary>
+    public class WallItem
+    {
+        /// <summary>
+        /// Constructs a new WallItem for display.
+        /// </summary>
+        /// <param name="from">Twitter account name the message is from. The initial
+        /// "@" is omitted here.</param>
+        /// <param name="message">The text of the message to display</param>
+        /// <param name="imageUri">URL pointing to the user's avatar image</param>
+        public WallItem(string from, string message, string imageUri)
+        {
+            From = from;
+            Message = message;
+            ImageUri = imageUri;
+        }
+
+        /// <summary>
+        /// Constructs a new WallItem for display.
+        /// </summary>
+        /// <param name="from">Twitter account name the message is from. The initial
+        /// "@" is omitted here.</param>
+        /// <param name="message">The text of the message to display</param>
+        /// <param name="imageUri">URL pointing to the user's avatar image</param>
+        /// <param name="timestamp">Timestamp of when the tweet was posted</param>
+        public WallItem(string from, string message, string imageUri, DateTime timestamp)
+        {
+            From = from;
+            Message = message;
+            ImageUri = imageUri;
+            TimeStamp = timestamp;
+        }
+
+        /// <summary>
+        /// Timestamp of when the tweet was posted
+        /// </summary>
+        public DateTime TimeStamp { get; set; }
+
+        /// <summary>
+        /// URL for the posting user's avatar
+        /// </summary>
+        public string ImageUri { get; set; }
+
+        /// <summary>
+        /// Twitter account name of the user the tweet was sent from. There
+        /// is no "@" prepended to this, so add at display time if you wish.
+        /// </summary>
+        public string From { get; set; }
+
+        /// <summary>
+        /// The text of the tweet message.
+        /// </summary>
+        public string Message { get; set; }
     }
 }

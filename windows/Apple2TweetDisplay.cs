@@ -32,6 +32,10 @@ using System.Xml.Linq;
 
 namespace TweetWall
 {
+    /// <summary>
+    /// This converts a tweet to Apple II format and sends to the Apple II.
+    /// There's some pretty rough code here that was hacked up over a weekend.
+    /// </summary>
     public class Apple2TweetDisplay
     {
         Apple2 apple = new Apple2();
@@ -75,63 +79,10 @@ namespace TweetWall
             set { readyToDisplay = value; }
         }
 
-        public void Dos33()
-        {
-            StreamReader reader = new StreamReader(@"..\..\dos33.dmp");
-            string file = reader.ReadToEnd();
-            string[] lines = file.Split('\r');
-            int address = 0;
-            int length = 0;
-            byte[] buffer = new byte[65536];
-
-            foreach (string line in lines)
-            {
-                string data;
-
-                if (line.StartsWith("CALL"))
-                {
-                    continue;
-                }
-
-                if (line[0] != ':')
-                {
-                    if (address != 0)
-                    {
-                        apple.SendBuffer(address, buffer, length);
-                    }
-
-                    // Parse hex address
-                    string addrString = line.Substring(0, line.IndexOf(':'));
-                    address = Int32.Parse(addrString, System.Globalization.NumberStyles.HexNumber);
-                    data = line.Substring(addrString.Length);
-                }
-                else
-                {
-                    data = line;
-                }
-
-                if (data[0] != ':')
-                {
-                    throw new ArgumentException("String format unrecognized");
-                }
-                data = data.Substring(1);
-
-                while (data.Length > 0)
-                {
-                    buffer[length] = (byte)int.Parse(data.Substring(0,2), System.Globalization.NumberStyles.HexNumber);
-                    ++length;
-                    data = data.Substring(2);
-                    data = data.Trim();
-                }
-            }
-
-            apple.SendBuffer(address, buffer, length);
-        }
-
         public void LoadCode()
         {
             // Use bootloader to download latest code
-            FileStream fs = new FileStream(@"..\..\TwitterII.bin", FileMode.Open, FileAccess.Read);
+            FileStream fs = new FileStream(@"..\..\..\apple2\TwitterII.bin", FileMode.Open, FileAccess.Read);
             int len = (int)(fs.Length + 255);
             byte[] code = new byte[len];
 

@@ -140,7 +140,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(435, 439);
+            this.ClientSize = new System.Drawing.Size(432, 439);
             this.Controls.Add(this.tweetList);
             this.Controls.Add(this.groupBox1);
             this.Name = "Form1";

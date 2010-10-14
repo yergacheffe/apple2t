@@ -126,15 +126,9 @@ namespace TweetWall
             Err = FT_Write(Handle, buffer, 1, out written);
         }
 
-        public void PrintString(string str)
-        {
-            foreach (char c in str)
-            {
-                SendByte((byte)(c | (byte)128));
-            }
-            SendByte(0x8d);
-        }
-
+        /// <summary>
+        /// Erase the Apple II high-res screen
+        /// </summary>
         public void ClearHires()
         {
             BitBang(7);
@@ -143,6 +137,14 @@ namespace TweetWall
             System.Threading.Thread.Sleep(400);
         }
 
+        /// <summary>
+        /// Transfer a byte to the Apple II. If you need to store
+        /// more than a byte or two, this is a very inefficient way
+        /// of doing so and you should use the SendBuffer() or 
+        /// SendPage() methods.
+        /// </summary>
+        /// <param name="address">The address to store the byte</param>
+        /// <param name="data">The byte to store.</param>
         public void SendByte(int address, byte data)
         {
             BitBang(6);
@@ -154,6 +156,13 @@ namespace TweetWall
             SendByte(data);
         }
 
+        /// <summary>
+        /// Uses the SendByte method to write the value of $00 to
+        /// a given address. This is used to access the Apple II's
+        /// memory-mapped soft-switches to do things like change
+        /// graphics modes, etc.
+        /// </summary>
+        /// <param name="address"></param>
         public void TickleAddress(int address)
         {
             BitBang(6);
@@ -165,16 +174,25 @@ namespace TweetWall
             SendByte(0x00);
         }
 
+        /// <summary>
+        /// Scrolls in GR2 screen to GR screen.
+        /// </summary>
         public void ScrollLores()
         {
             BitBang(5);
             System.Threading.Thread.Sleep(5);
             BitBang(0);
 
-            // Really takes about a second to scroll, but just to be safe...
+            // Really takes less than a second to scroll, but just to be safe...
             System.Threading.Thread.Sleep(1000);
         }
 
+        /// <summary>
+        /// Transfer a complete 256-byte page to the Apple II as fast as we can.
+        /// </summary>
+        /// <param name="page">High byte of destinatio address. For example,
+        /// to transfer data to addresses $800..$8FF this parameter will be 0x08</param>
+        /// <param name="data">256 bytes to send</param>
         public void SendPage(byte page, byte[] data)
         {
             if (data.Length != 256)
@@ -211,7 +229,9 @@ namespace TweetWall
             System.Threading.Thread.Sleep(10);
         }
 
-        public int SendByte(byte data)
+        // Low-level byte send. Requires we're already in a transfer mode
+        // protocol. Don't use this directly unless you know what you're doing.
+        private int SendByte(byte data)
         {
             // Send data
             for (int bit = 7; bit >= 0; --bit)
@@ -226,6 +246,16 @@ namespace TweetWall
             return Err;
         }
 
+        /// <summary>
+        /// High-level utility to transfer an arbirarily-sized buffer
+        /// to the Apple II at a given address. Uses the fast SendPage()
+        /// protocol for as much as possible and then fills up stragglers
+        /// with the slower byte-by-byte transfer.
+        /// </summary>
+        /// <param name="address">Start address. The Apple II is 16-bit
+        /// address bus so only values from $0000 to $FFFF make sense</param>
+        /// <param name="buffer">The data to copy to the Apple II</param>
+        /// <param name="length">How many bytes to copy from buffer</param>
         public void SendBuffer(int address, byte[] buffer, int length)
         {
             int pages = length / 256;
