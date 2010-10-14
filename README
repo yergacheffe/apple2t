@@ -1,11 +1,13 @@
-Issues / Todo
+STATUS
 
-1. Biggest current issue is that the .Net code as it stands today
-   doesn't work with Twitter. This is because Twitter no longer
-   supports basic-auth and requires OAuth. The code in WallItem.cs
-   will need to be changed. I have updated the version of the
-   TweetSharp Twitter API wrapper, which supports OAuth. So this
-   shouldn't be a lot of work.
+Dealt with the OAuthpocalypse. The PC code now supports OAuth in the single-client mode.
+Instructions on how to enter your credentials can be found in windows/WallItem.cs
 
-2. Finish documentation on how to get the initial code to the Apple II
+Documentation is getting fleshed out. For the ambitious among you, take a look at 
+Documentation.pdf which explains what you'll need to purchase to construct the 
+PC->Apple II communication cable.
+
+At this point there should be enough info and working code for a motivated individual
+to get their own Apple II Twitter Display up and running. It's mostly cleanup and 
+better documentation that's lacking now.
 
