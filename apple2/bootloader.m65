@@ -25,9 +25,8 @@ ReceivePage	LDA	#$00
 			; Now read 256 bytes
 @ReceiveNextByte
 			JSR	ReadByte
-			LDY	#$00
 			PagePointer = *+1
-			STA	$1234,Y
+			STA	$1234
 			INC	PagePointer
 			BNE	@ReceiveNextByte
 			
