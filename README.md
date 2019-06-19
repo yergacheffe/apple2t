@@ -1,7 +1,4 @@
-STATUS
-
-Dealt with the OAuthpocalypse. The PC code now supports OAuth in the single-client mode.
-Instructions on how to enter your credentials can be found in windows/WallItem.cs
+# Apple IIt
 
 Documentation is getting fleshed out. For the ambitious among you, take a look at 
 Documentation.pdf which explains what you'll need to purchase to construct the 
