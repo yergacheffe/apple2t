@@ -47,7 +47,6 @@ ReadByte	LDA	#$00		; Init return to 0
 			BMI	@WaitClock
 			
 			; Finished reading a bit
-			
 			DEX				; Decrement bit count
 			BNE	@RBNextBit	; If more to read, then read them
 			
